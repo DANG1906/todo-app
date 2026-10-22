@@ -1,0 +1,59 @@
+@baseUrl = http://localhost:3000/api/tasks
+@id = 5
+
+### GET: lấy danh sách
+GET {{baseUrl}}
+
+### POST: thêm task hợp lệ -> 201
+POST {{baseUrl}}
+Content-Type: application/json
+
+{ "title": "Học REST Client" }
+
+### POST: title rỗng -> 400
+POST {{baseUrl}}
+Content-Type: application/json
+
+{ "title": "" }
+
+### POST: toàn khoảng trắng -> 400
+POST {{baseUrl}}
+Content-Type: application/json
+
+{ "title": "   " }
+
+### POST: thiếu title -> 400
+POST {{baseUrl}}
+Content-Type: application/json
+
+{}
+
+### PATCH: đánh dấu hoàn thành -> 200
+PATCH {{baseUrl}}/{{id}}
+Content-Type: application/json
+
+{ "status": 1 }
+
+### PATCH: status sai -> 400
+PATCH {{baseUrl}}/{{id}}
+Content-Type: application/json
+
+{ "status": 5 }
+
+### PATCH: body rỗng -> 400
+PATCH {{baseUrl}}/{{id}}
+Content-Type: application/json
+
+{}
+
+### PATCH: id không tồn tại -> 404
+PATCH {{baseUrl}}/99999
+Content-Type: application/json
+
+{ "status": 1 }
+
+### DELETE: xóa task -> 200 (lần 2 sẽ 404)
+DELETE {{baseUrl}}/{{id}}
+
+### DELETE: id sai định dạng -> 400
+DELETE {{baseUrl}}/abc

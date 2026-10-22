@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Khai báo đây là tài liệu HTML5 -->
+<html lang="vi">
+  <!-- lang="vi": báo trình duyệt/công cụ đọc màn hình đây là tiếng Việt -->
+  <head>
+    <meta charset="UTF-8" />
+    <!-- mã hóa UTF-8 để hiển thị đúng tiếng Việt có dấu -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- giúp trang hiển thị đúng tỉ lệ trên điện thoại -->
+    <title>Todo List</title>
+    <!-- tiêu đề hiện trên tab trình duyệt -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- nạp file CSS (sẽ tạo ở bước 5.2) -->
+  </head>
+  <body>
+    <main class="container">
+      <!-- <main>: vùng nội dung chính, có ngữ nghĩa rõ hơn <div> -->
+      <h1>Danh sách công việc</h1>
+
+      <!-- Form thêm công việc -->
+      <form id="task-form">
+        <input
+          type="text"
+          id="task-input"
+          placeholder="Nhập công việc cần làm..."
+          maxlength="255"
+          required
+        />
+        <!-- maxlength="255" khớp VARCHAR(255) ở DB; required chặn gửi khi trống -->
+        <button type="submit">Thêm</button>
+      </form>
+
+      <!-- Nơi hiển thị thông báo lỗi (JS sẽ ghi vào đây) -->
+      <p id="message" class="message"></p>
+
+      <!-- Danh sách công việc; JS sẽ tạo các <li> bên trong -->
+      <ul id="task-list"></ul>
+    </main>
+
+    <script src="script.js"></script>
+    <!-- nạp JS ở cuối body để HTML đã được tạo xong trước khi JS tìm phần tử -->
+  </body>
+</html>
