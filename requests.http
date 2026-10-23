@@ -28,11 +28,29 @@ Content-Type: application/json
 
 {}
 
+### POST: title là số (sai kiểu) -> 400
+POST {{baseUrl}}
+Content-Type: application/json
+
+{ "title": 12345 }
+
+### POST: JSON sai cú pháp -> 400
+POST {{baseUrl}}
+Content-Type: application/json
+
+{ "title": "abc"
+
 ### PATCH: đánh dấu hoàn thành -> 200
 PATCH {{baseUrl}}/{{id}}
 Content-Type: application/json
 
 { "status": 1 }
+
+### PATCH: đổi title -> 200
+PATCH {{baseUrl}}/{{id}}
+Content-Type: application/json
+
+{ "title": "Tên mới" }
 
 ### PATCH: status sai -> 400
 PATCH {{baseUrl}}/{{id}}
@@ -57,3 +75,9 @@ DELETE {{baseUrl}}/{{id}}
 
 ### DELETE: id sai định dạng -> 400
 DELETE {{baseUrl}}/abc
+
+### PATCH: id hex (sai định dạng) -> 400
+PATCH {{baseUrl}}/0x10
+Content-Type: application/json
+
+{ "status": 1 }

@@ -45,9 +45,8 @@ function renderTasks(tasks) {
     checkbox.className = "task-checkbox";
     checkbox.checked = Boolean(task.status); // status 1 → tick sẵn, 0 → không tick
 
-    li.append(checkbox, title, deleteBtn); // SỬA: thêm checkbox đứng đầu hàng
-
-    li.append(title, deleteBtn); // append nhận nhiều phần tử một lúc
+    // append nhận nhiều phần tử một lúc: checkbox đứng đầu, rồi tiêu đề, rồi nút Xóa
+    li.append(checkbox, title, deleteBtn);
     list.appendChild(li);
   });
 }

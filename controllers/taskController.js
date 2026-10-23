@@ -1,52 +1,86 @@
 // Đường dẫn '../config/db': đi lên một cấp (ra khỏi controllers/) rồi vào config/
 const pool = require("../config/db");
 
+const MAX_TITLE_LENGTH = 255;
+
+// Các cột được phép trả về client (không dùng SELECT * để tránh lộ cột thêm sau này)
+const TASK_COLUMNS = "id, title, status, created_at";
+
+// ---- Hàm dùng chung để kiểm tra dữ liệu đầu vào ----
+
+// Đọc id từ URL: chỉ chấp nhận chuỗi toàn chữ số.
+// Nhờ vậy "1.5", "0x10", " 1 " hay "abc" đều bị coi là sai định dạng.
+function parseId(rawId) {
+  if (typeof rawId !== "string" || !/^\d+$/.test(rawId)) return null;
+  const id = Number(rawId);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+// Chuẩn hóa title: phải là chuỗi, trim, không rỗng, tối đa 255 ký tự.
+// Trả về { value } nếu hợp lệ, { error } nếu không hợp lệ.
+function validateTitle(rawTitle) {
+  if (typeof rawTitle !== "string") {
+    return { error: "Tiêu đề phải là chuỗi" };
+  }
+
+  const title = rawTitle.trim();
+  if (!title) {
+    return { error: "Tiêu đề không được để trống" };
+  }
+  if (title.length > MAX_TITLE_LENGTH) {
+    return { error: `Tiêu đề tối đa ${MAX_TITLE_LENGTH} ký tự` };
+  }
+
+  return { value: title };
+}
+
+// status chỉ nhận 0, 1 hoặc true/false; trả về null nếu sai.
+function parseStatus(rawStatus) {
+  if (rawStatus === 0 || rawStatus === 1) return rawStatus;
+  if (typeof rawStatus === "boolean") return rawStatus ? 1 : 0;
+  return null;
+}
+
 // ---- Lấy toàn bộ công việc ----
-// Trước đây là callback của app.get(...); giờ tách thành hàm riêng có tên
-async function getTasks(req, res) {
+async function getTasks(req, res, next) {
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM tasks ORDER BY created_at DESC, id DESC",
+      `SELECT ${TASK_COLUMNS} FROM tasks ORDER BY created_at DESC, id DESC`,
     );
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    next(err); // chuyển lỗi cho middleware xử lý lỗi ở server.js
   }
 }
 
 // ---- Thêm công việc ----
-async function createTask(req, res) {
+async function createTask(req, res, next) {
   try {
-    const title = (req.body?.title ?? "").toString().trim();
-
-    if (!title) {
-      return res.status(400).json({ message: "Tiêu đề không được để trống" });
-    }
-    if (title.length > 255) {
-      return res.status(400).json({ message: "Tiêu đề tối đa 255 ký tự" });
+    const { value: title, error } = validateTitle(req.body?.title);
+    if (error) {
+      return res.status(400).json({ message: error });
     }
 
     const [result] = await pool.execute(
       "INSERT INTO tasks (title) VALUES (?)",
       [title],
     );
-    const [rows] = await pool.query("SELECT * FROM tasks WHERE id = ?", [
-      result.insertId,
-    ]);
+    const [rows] = await pool.execute(
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE id = ?`,
+      [result.insertId],
+    );
 
     res.status(201).json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    next(err);
   }
 }
 
 // ---- Xóa công việc ----
-async function deleteTask(req, res) {
+async function deleteTask(req, res, next) {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
+    const id = parseId(req.params.id);
+    if (id === null) {
       return res.status(400).json({ message: "ID không hợp lệ" });
     }
 
@@ -57,16 +91,15 @@ async function deleteTask(req, res) {
 
     res.json({ message: "Đã xóa", id });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    next(err);
   }
 }
 
 // ---- Cập nhật một phần công việc ----
-async function updateTask(req, res) {
+async function updateTask(req, res, next) {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id <= 0) {
+    const id = parseId(req.params.id);
+    if (id === null) {
       return res.status(400).json({ message: "ID không hợp lệ" });
     }
 
@@ -75,23 +108,21 @@ async function updateTask(req, res) {
     const values = [];
 
     if (title !== undefined) {
-      const newTitle = String(title).trim();
-      if (!newTitle) {
-        return res.status(400).json({ message: "Tiêu đề không được để trống" });
-      }
-      if (newTitle.length > 255) {
-        return res.status(400).json({ message: "Tiêu đề tối đa 255 ký tự" });
+      const { value, error } = validateTitle(title);
+      if (error) {
+        return res.status(400).json({ message: error });
       }
       fields.push("title = ?");
-      values.push(newTitle);
+      values.push(value);
     }
 
     if (status !== undefined) {
-      if (status !== 0 && status !== 1 && typeof status !== "boolean") {
+      const newStatus = parseStatus(status);
+      if (newStatus === null) {
         return res.status(400).json({ message: "status chỉ nhận 0 hoặc 1" });
       }
       fields.push("status = ?");
-      values.push(status ? 1 : 0);
+      values.push(newStatus);
     }
 
     if (fields.length === 0) {
@@ -99,20 +130,25 @@ async function updateTask(req, res) {
     }
 
     values.push(id);
-    const [result] = await pool.execute(
+    // fields.join(", ") chỉ ghép các tên cột cố định ở trên, KHÔNG ghép dữ liệu người dùng.
+    await pool.execute(
       `UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`,
       values,
     );
 
-    if (result.affectedRows === 0) {
+    // Đọc lại sau khi cập nhật: vừa trả dữ liệu mới, vừa phát hiện id không tồn tại.
+    // (Không dựa vào affectedRows vì MySQL trả 0 khi giá trị mới trùng giá trị cũ.)
+    const [rows] = await pool.execute(
+      `SELECT ${TASK_COLUMNS} FROM tasks WHERE id = ?`,
+      [id],
+    );
+    if (rows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy công việc" });
     }
 
-    const [rows] = await pool.query("SELECT * FROM tasks WHERE id = ?", [id]);
     res.json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Lỗi server" });
+    next(err);
   }
 }
 

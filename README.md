@@ -18,7 +18,7 @@
 
 ## Cài đặt và chạy
 
-1. **Yêu cầu:** Node.js, XAMPP (hoặc MySQL).
+1. **Yêu cầu:** Node.js >= 18.11 (để dùng `node --watch`), XAMPP (hoặc MySQL).
 2. Clone repo:
 
 ```bash
@@ -35,6 +35,9 @@
    npm run dev
 ```
 
+   `npm run dev` dùng `node --watch` có sẵn trong Node.js nên không cần cài `nodemon`.
+   Nếu MySQL chưa bật, server báo lỗi rõ ràng và dừng ngay.
+
 6. Mở http://localhost:3000
 
 ## API
@@ -46,8 +49,18 @@
 | PATCH  | `/api/tasks/:id` | Sửa `title` và/hoặc `status` (0 hoặc 1)   | 200           |
 | DELETE | `/api/tasks/:id` | Xóa công việc                             | 200           |
 
-Mã lỗi: `400` dữ liệu sai, `404` không tìm thấy, `500` lỗi server.
+Mã lỗi: `400` dữ liệu sai, `404` không tìm thấy, `413` body quá lớn, `500` lỗi server.
 Có thể thử nhanh các API bằng file `requests.http` (extension REST Client của VS Code).
+
+## Bảo mật
+
+- Dùng prepared statement cho mọi truy vấn có dữ liệu người dùng (chống SQL injection).
+- Render bằng `textContent`, không dùng `innerHTML` (chống XSS).
+- Validate ở server: `title` phải là chuỗi, tối đa 255 ký tự; `id` chỉ gồm chữ số; `status` chỉ nhận 0/1.
+- Giới hạn body JSON 10kb; JSON sai cú pháp trả `400`, body quá lớn trả `413`.
+- Middleware lỗi tập trung chỉ ghi log ở server, client nhận `{ "message": "..." }`.
+- Frontend cùng origin nên không bật CORS mở; ẩn header `X-Powered-By`.
+- `npm audit` hiện báo **0 lỗ hổng**. Không dùng `nodemon` vì phụ thuộc `braces` đang có CVE-2026-93687 chưa có bản vá; `npm run dev` dùng `node --watch` thay thế.
 
 ## Cấu trúc thư mục
 
